@@ -7,6 +7,16 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&display=swap" rel="stylesheet">
+<script>
+  // Opened on a phone? Go to the phone page, keeping the key. (Add &tv to the link to see the TV view on a phone.)
+  window.hubIsPhone = function (ua, touch, shortSide) {
+    if (/TV|BRAVIA|AFT[A-Z]|Chromecast|CrKey/i.test(ua) || !touch || shortSide > 500) return false;
+    return /iPhone|iPod/.test(ua) || /Android.*Mobile/.test(ua);
+  };
+  if (!/[#&]tv\b/.test(location.hash) && window.hubIsPhone(navigator.userAgent, navigator.maxTouchPoints > 0, Math.min(screen.width, screen.height))) {
+    location.replace('edit.html' + location.hash);
+  }
+</script>
 <script src="config.js"></script>
 <script src="demo.js"></script>
 <style>
