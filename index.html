@@ -1,0 +1,468 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Home Hub</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&display=swap" rel="stylesheet">
+<script src="config.js"></script>
+<script src="demo.js"></script>
+<style>
+  :root {
+    --bg: #101216; --card: #1a1d23; --card-2: #21252c; --line: #2a2e36;
+    --text: #f4f1ea; --muted: #959ca6; --faint: #5f6570; --accent: #f5b54a; --now: #6fd39b;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  /* Everything is sized in rem, and rem scales with the screen, so it fits any TV/monitor. */
+  html { font-size: min(1.08vw, 1.92vh); } /* refined in JS by layout() */
+  #stage { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; transform-origin: 0 0; overflow: hidden; }
+  body {
+    background: var(--bg); color: var(--text); height: 100vh; overflow: hidden; cursor: none;
+    font-family: 'DM Sans', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  ul { list-style: none; }
+  .app { height: 100%; display: grid; grid-template-columns: minmax(0, 1fr); grid-template-rows: auto minmax(0, 1fr) auto; gap: 1.2rem; padding: 1.5rem 2rem 1rem; }
+
+  /* ---------- header ---------- */
+  header { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 2.4rem; }
+  .clock { font-size: 5.6rem; font-weight: 600; line-height: .85; letter-spacing: -.035em; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .clock small { font-size: 2.1rem; font-weight: 500; color: var(--muted); margin-left: .5rem; letter-spacing: 0; }
+  .date { font-size: 1.65rem; color: var(--muted); margin-top: .6rem; }
+  .countdowns { display: flex; gap: .8rem; justify-content: center; flex-wrap: wrap; }
+  .cd { background: var(--card); border-radius: 999px; padding: .55rem 1.2rem .55rem .9rem; font-size: 1.15rem; display: flex; gap: .7rem; align-items: center; white-space: nowrap; }
+  .cd .e { font-size: 1.6rem; line-height: 1; }
+  .cd b { color: var(--accent); font-weight: 700; }
+  .wx { display: flex; align-items: center; gap: 1.1rem; }
+  .wx-icon { font-size: 4.2rem; line-height: 1; }
+  .wx-temp { font-size: 4.4rem; font-weight: 600; line-height: .85; letter-spacing: -.03em; }
+  .wx-desc { font-size: 1.3rem; color: var(--muted); margin-top: .55rem; white-space: nowrap; }
+  .wx-desc b { color: var(--text); font-weight: 500; }
+  .wx-msg { font-size: 1.15rem; color: var(--faint); max-width: 22rem; text-align: right; }
+
+  /* ---------- main ---------- */
+  main { display: grid; grid-template-columns: minmax(0, 1.08fr) minmax(0, 1.55fr) minmax(0, 1fr); gap: 1.3rem; min-height: 0; }
+  .col { display: flex; flex-direction: column; gap: 1.3rem; min-height: 0; }
+  .card { background: var(--card); border-radius: 1.4rem; padding: 1.4rem 1.5rem; min-height: 0; display: flex; flex-direction: column; overflow: hidden; }
+  .card > h2 { font-size: .98rem; letter-spacing: .15em; text-transform: uppercase; color: var(--muted); font-weight: 600; margin-bottom: .9rem; display: flex; justify-content: space-between; gap: 1rem; flex: none; }
+  .card > h2 .r { color: var(--faint); letter-spacing: .08em; }
+  .fit { overflow: hidden; min-height: 0; }
+  .more { color: var(--faint); font-size: 1.05rem !important; line-height: 1.45 !important; padding: 0 !important; }
+  .empty { color: var(--faint); font-size: 1.35rem; padding: .6rem 0; }
+
+  .chips { display: flex; flex-wrap: wrap; gap: .5rem; margin-bottom: .8rem; flex: none; }
+  .chip { display: inline-flex; align-items: center; gap: .5rem; padding: .35rem .8rem; border-radius: .6rem; font-size: 1.15rem; font-weight: 500; max-width: 100%; }
+  .chip span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+  /* today */
+  .today { flex: 1; }
+  .today-list { flex: 1; }
+  .ev { display: grid; grid-template-columns: 6.6rem .32rem minmax(0, 1fr); gap: .95rem; padding: .55rem 0; border-top: 1px solid var(--line); }
+  .ev:first-child { border-top: 0; padding-top: .2rem; }
+  .ev-time { font-size: 1.4rem; font-weight: 600; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .ev-time span { display: block; font-size: 1.02rem; color: var(--muted); font-weight: 400; margin-top: .1rem; }
+  .ev-bar { border-radius: 9px; }
+  .ev-title { font-size: 1.42rem; font-weight: 500; line-height: 1.2; overflow: hidden; text-overflow: ellipsis; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+  .ev-sub { font-size: 1.08rem; color: var(--muted); margin-top: .2rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .ev.past { opacity: .38; }
+  .badge { display: inline-block; font-size: .82rem; font-weight: 700; letter-spacing: .1em; padding: .15rem .5rem; border-radius: .4rem; vertical-align: .2rem; margin-left: .5rem; }
+  .badge.now { background: var(--now); color: #0d2a1b; }
+  .badge.soon { background: rgba(245,181,74,.18); color: var(--accent); }
+  .tonight { flex: none; margin-top: .9rem; background: var(--card-2); border-radius: 1rem; padding: .85rem 1.1rem; display: flex; align-items: center; gap: .9rem; font-size: 1.35rem; }
+  .tonight .e { font-size: 1.8rem; }
+  .tonight small { display: block; color: var(--muted); font-size: .9rem; letter-spacing: .12em; text-transform: uppercase; font-weight: 600; }
+
+  /* week */
+  .week { flex: 1; }
+  .days { flex: 1; display: grid; grid-template-columns: 1fr 1fr; gap: .9rem; min-height: 0; }
+  .day { background: var(--card-2); border-radius: 1.05rem; padding: .75rem 1.05rem .7rem; display: flex; flex-direction: column; min-height: 0; overflow: hidden; }
+  .day-head { display: flex; justify-content: space-between; align-items: baseline; gap: .8rem; margin-bottom: .35rem; flex: none; }
+  .day-name { font-size: 1rem; color: var(--muted); text-transform: uppercase; letter-spacing: .1em; font-weight: 600; margin-right: .5rem; }
+  .day-num { font-size: 1.9rem; font-weight: 600; line-height: 1; }
+  .day.weekend .day-name { color: var(--accent); }
+  .day .w { font-size: 1.2rem; white-space: nowrap; flex: none; }
+  .day-head > div:first-child { min-width: 0; overflow: hidden; white-space: nowrap; }
+  .day .w i { font-style: normal; color: var(--muted); }
+  .day-events { flex: 1; }
+  .day-events li { font-size: 1.18rem; line-height: 1.42; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .day-events li.free { color: var(--faint); }
+  .day-events .chip { font-size: 1.02rem; padding: .1rem .6rem; margin: .1rem 0 .25rem; }
+  .dot { display: inline-block; width: .62rem; height: .62rem; border-radius: 50%; margin-right: .6rem; vertical-align: .12rem; }
+  .t { color: var(--muted); font-variant-numeric: tabular-nums; margin-right: .45rem; }
+  .day-foot { flex: none; display: flex; justify-content: space-between; gap: .8rem; font-size: 1.1rem; color: var(--muted); margin-top: .25rem; min-height: 1.5rem; }
+  .day-foot .m { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+  .more-slot { flex: none; color: var(--faint); }
+
+  /* lists */
+  .list { flex-basis: 0; flex-shrink: 1; min-height: 8rem; padding: 1.1rem 1.3rem; }
+  .list > h2 { margin-bottom: .55rem; }
+  .list.empty-list { flex: none; min-height: 0; }
+  .list ul { flex: 1; }
+  .list li { font-size: 1.2rem; padding: .22rem 0; display: flex; gap: .75rem; align-items: baseline; line-height: 1.3; }
+  .list li:not(.more)::before { content: ''; flex: none; width: .95rem; height: .95rem; border: 2px solid var(--faint); border-radius: .3rem; transform: translateY(.08rem); }
+  .list li span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .list .count { color: var(--faint); }
+
+  /* footer */
+  footer { display: flex; justify-content: space-between; align-items: center; gap: 2rem; font-size: 1.05rem; color: var(--faint); }
+  .legend { display: flex; gap: 1.4rem; flex-wrap: wrap; flex: none; max-width: 30%; }
+  .notes { flex: 1; min-width: 0; display: flex; gap: .8rem; justify-content: center; }
+  .notes span { background: #2e2818; color: #f8d58f; border-radius: 999px; padding: .45rem 1.2rem; font-size: 1.3rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+  .status { flex: none; max-width: 30%; text-align: right; }
+  .legend span { display: inline-flex; align-items: center; color: var(--muted); }
+  .status.warn { color: var(--accent); }
+
+  /* night mode */
+  #night { position: absolute; inset: 0; background: #000; display: none; flex-direction: column; align-items: center; justify-content: center; color: #6b6b6b; text-align: center; }
+  body.night #night { display: flex; }
+  body.night .app { display: none; }
+  /* portrait (vertical monitor) */
+  body.portrait header { grid-template-columns: minmax(0, 1fr) auto; row-gap: 1.1rem; }
+  body.portrait .countdowns { grid-column: 1 / -1; grid-row: 2; justify-content: flex-start; }
+  body.portrait main { grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr); grid-template-rows: minmax(0, .9fr) minmax(0, 1.25fr); }
+  body.portrait main > .col:nth-child(1) { grid-column: 1; grid-row: 1; }
+  body.portrait main > .col:nth-child(3) { grid-column: 2; grid-row: 1; }
+  body.portrait main > .col:nth-child(2) { grid-column: 1 / -1; grid-row: 2; }
+  body.portrait footer { flex-wrap: wrap; row-gap: .8rem; }
+  body.portrait .notes { order: -1; flex: 1 1 100%; justify-content: flex-start; }
+  body.portrait .legend { max-width: 70%; }
+  body.portrait #night .clock { font-size: 9rem; }
+  #night .clock { font-size: 13rem; color: #7a7a7a; }
+  #night .clock small { color: #555; }
+  #night .date { font-size: 2.2rem; color: #555; }
+  #night .next { font-size: 1.6rem; color: #4a4a4a; margin-top: 2.5rem; }
+</style>
+</head>
+<body>
+<div id="stage">
+<div class="app">
+  <header>
+    <div>
+      <div class="clock" id="clock"></div>
+      <div class="date" id="date"></div>
+    </div>
+    <div class="countdowns" id="countdowns"></div>
+    <div id="weather"></div>
+  </header>
+  <main>
+    <div class="col"><section class="card today" id="today"></section></div>
+    <div class="col"><section class="card week" id="week"></section></div>
+    <div class="col" id="side"></div>
+  </main>
+  <footer>
+    <div class="legend" id="legend"></div>
+    <div class="notes" id="notes"></div>
+    <div class="status" id="status"></div>
+  </footer>
+</div>
+<div id="night">
+  <div class="clock" id="nclock"></div>
+  <div class="date" id="ndate"></div>
+  <div class="next" id="nnext"></div>
+</div>
+</div>
+
+<script>
+(function () {
+  'use strict';
+  var CFG = window.HUB_CONFIG || {};
+  var store = {
+    get: function (k) { try { return localStorage.getItem(k); } catch (e) { return null; } },
+    set: function (k, v) { try { localStorage.setItem(k, v); } catch (e) {} }
+  };
+  var hash = new URLSearchParams(location.hash.replace(/^#/, ''));
+  if (hash.get('k')) store.set('hub.key', hash.get('k'));
+  if (hash.get('api')) store.set('hub.api', hash.get('api'));
+  var API = store.get('hub.api') || CFG.API_URL || '';
+  var KEY = store.get('hub.key') || '';
+  var DEMO = !API || hash.has('demo');
+  var REFRESH = Math.max(1, Number(CFG.REFRESH_MINUTES) || 3) * 60000;
+  var DAY = 86400000;
+  if (hash.has('rotate')) store.set('hub.rotate', hash.get('rotate'));
+  var ROTATE = store.get('hub.rotate'); // set via #rotate=90 in the URL; overrides the sheet setting
+  var PORTRAIT = false;
+
+  var data = null, lastOk = 0, err = '', timer = null, lastMinute = -1;
+
+  /* ---------------- helpers ---------------- */
+  var $ = function (id) { return document.getElementById(id); };
+  function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
+  function S() { return (data && data.settings) || { clock24: false, nightStart: 22, nightEnd: 6, days: 7, units: 'F' }; }
+  function sod(d) { var x = new Date(d); x.setHours(0, 0, 0, 0); return x; }
+  function addDays(d, n) { var x = new Date(d); x.setDate(x.getDate() + n); return x; }
+  function ymd(d) { return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); }
+  function parseYmd(s) { var p = s.split('-').map(Number); return new Date(p[0], p[1] - 1, p[2]); }
+  function rgba(hex, a) {
+    var h = String(hex || '#8ab4f8').replace('#', '');
+    if (h.length === 3) h = h.replace(/(.)/g, '$1$1');
+    var n = parseInt(h, 16);
+    return 'rgba(' + ((n >> 16) & 255) + ',' + ((n >> 8) & 255) + ',' + (n & 255) + ',' + a + ')';
+  }
+  function fmtTime(ms) {
+    var d = new Date(ms), h = d.getHours(), m = d.getMinutes();
+    if (S().clock24) return String(h).padStart(2, '0') + ':' + String(m).padStart(2, '0');
+    var ap = h < 12 ? 'am' : 'pm'; h = h % 12 || 12;
+    return h + (m ? ':' + String(m).padStart(2, '0') : '') + ap;
+  }
+  function colorsBg(colors) {
+    if (!colors || colors.length < 2) return (colors && colors[0]) || '#8ab4f8';
+    var step = 100 / colors.length;
+    return 'linear-gradient(' + colors.map(function (c, i) { return c + ' ' + (i * step) + '%,' + c + ' ' + ((i + 1) * step) + '%'; }).join(',') + ')';
+  }
+  function dots(colors) {
+    var n = (colors || []).length;
+    return (colors || []).map(function (c, i) { return '<i class="dot" style="background:' + c + (i < n - 1 ? ';margin-right:.2rem' : '') + '"></i>'; }).join('');
+  }
+  function chip(ev) {
+    var c = (ev.colors && ev.colors[0]) || '#8ab4f8';
+    return '<div class="chip" style="background:' + rgba(c, .2) + ';color:' + c + '"><span>' + esc(ev.title) + '</span></div>';
+  }
+
+  var WX = { 0: ['☀️', 'Clear'], 1: ['🌤️', 'Mostly clear'], 2: ['⛅', 'Partly cloudy'], 3: ['☁️', 'Cloudy'], 45: ['🌫️', 'Fog'], 48: ['🌫️', 'Fog'],
+    51: ['🌦️', 'Light drizzle'], 53: ['🌦️', 'Drizzle'], 55: ['🌧️', 'Drizzle'], 56: ['🌧️', 'Freezing drizzle'], 57: ['🌧️', 'Freezing drizzle'],
+    61: ['🌦️', 'Light rain'], 63: ['🌧️', 'Rain'], 65: ['🌧️', 'Heavy rain'], 66: ['🌧️', 'Freezing rain'], 67: ['🌧️', 'Freezing rain'],
+    71: ['🌨️', 'Light snow'], 73: ['🌨️', 'Snow'], 75: ['❄️', 'Heavy snow'], 77: ['🌨️', 'Snow'], 80: ['🌦️', 'Showers'], 81: ['🌧️', 'Showers'],
+    82: ['⛈️', 'Heavy showers'], 85: ['🌨️', 'Snow showers'], 86: ['❄️', 'Snow showers'], 95: ['⛈️', 'Thunderstorms'], 96: ['⛈️', 'Thunderstorms'], 99: ['⛈️', 'Thunderstorms'] };
+  function wx(code, isDay) {
+    var w = WX[code] || ['🌡️', ''];
+    var icon = w[0];
+    if (isDay === 0 && (code === 0 || code === 1)) icon = '🌙';
+    return { icon: icon, text: w[1] };
+  }
+  function dailyFor(key) {
+    var w = data && data.weather;
+    if (!w || !w.daily) return null;
+    for (var i = 0; i < w.daily.length; i++) if (w.daily[i].date === key) return w.daily[i];
+    return null;
+  }
+
+  function eventsOn(day) {
+    var s = sod(day), e = addDays(s, 1), k = ymd(s), all = [], timed = [];
+    ((data && data.events) || []).forEach(function (ev) {
+      if (ev.allDay) {
+        var end = ev.endDate || ev.startDate;
+        if (ev.startDate <= k && (k < end || k === ev.startDate)) all.push(ev);
+      } else if (ev.start < e.getTime() && (ev.end > s.getTime() || (ev.end === ev.start && ev.start >= s.getTime()))) {
+        timed.push(ev);
+      }
+    });
+    timed.sort(function (a, b) { return a.start - b.start || a.end - b.end; });
+    return { all: all, timed: timed, s: s.getTime(), e: e.getTime() };
+  }
+
+  /* Hides items that don't fit and adds a "+N more" line. */
+  function fit(ul) {
+    var items = Array.prototype.filter.call(ul.children, function (li) { return !li.classList.contains('more'); });
+    var over = function () { return ul.scrollHeight > ul.clientHeight + 2; };
+    if (!over()) return;
+    var slot = ul.parentElement.querySelector('.more-slot');
+    if (slot) {
+      var h = 0, j = items.length - 1;
+      while (over() && j > 0) { items[j--].style.display = 'none'; h++; }
+      slot.textContent = '+' + h + ' more';
+      return;
+    }
+    var hidden = 0, i = items.length - 1, more = document.createElement('li');
+    more.className = 'more';
+    while (over() && i >= 0) { items[i--].style.display = 'none'; hidden++; }
+    more.textContent = '+' + hidden + ' more';
+    ul.appendChild(more);
+    while (over() && i >= 0) { items[i--].style.display = 'none'; hidden++; more.textContent = '+' + hidden + ' more'; }
+  }
+
+  /* ---------------- rendering ---------------- */
+  function clockHtml(now) {
+    var h = now.getHours(), m = String(now.getMinutes()).padStart(2, '0');
+    if (S().clock24) return String(h).padStart(2, '0') + ':' + m;
+    return (h % 12 || 12) + ':' + m + '<small>' + (h < 12 ? 'AM' : 'PM') + '</small>';
+  }
+
+  function renderClock(now) {
+    var c = clockHtml(now), d = now.toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' });
+    $('clock').innerHTML = c; $('date').textContent = d;
+    $('nclock').innerHTML = c; $('ndate').textContent = d;
+  }
+
+  function renderWeather() {
+    var w = data.weather, el = $('weather');
+    if (!w || w.error || !w.current) { el.innerHTML = '<div class="wx-msg">' + esc((w && w.error) || '') + '</div>'; return; }
+    var c = w.current, x = wx(c.code, c.isDay), t = dailyFor(ymd(new Date())) || (w.daily && w.daily[0]);
+    el.innerHTML = '<div class="wx"><div class="wx-icon">' + x.icon + '</div><div>' +
+      '<div class="wx-temp">' + Math.round(c.temp) + '°</div>' +
+      '<div class="wx-desc">' + esc(x.text) + (t ? ' · <b>' + Math.round(t.hi) + '°</b> / ' + Math.round(t.lo) + '°' : '') + '</div>' +
+      '<div class="wx-desc">Feels like ' + Math.round(c.feels) + '°' + (t && t.pop >= 30 ? ' · 💧 ' + t.pop + '%' : '') + '</div>' +
+      '</div></div>';
+  }
+
+  function renderCountdowns(now) {
+    var today = sod(now), list = (data.countdowns || []).filter(function (c) { return c.date >= ymd(today); }).slice(0, 3);
+    $('countdowns').innerHTML = list.map(function (c) {
+      var n = Math.round((parseYmd(c.date) - today) / DAY);
+      var when = n === 0 ? 'Today!' : n === 1 ? 'Tomorrow' : n + ' days';
+      return '<div class="cd">' + (c.emoji ? '<span class="e">' + esc(c.emoji) + '</span>' : '') + '<span>' + esc(c.name) + '</span><b>' + when + '</b></div>';
+    }).join('');
+  }
+
+  function renderToday(now) {
+    var d = eventsOn(now), t = now.getTime(), nextFound = false, html = '';
+    html += '<h2><span>Today</span><span class="r">' + now.toLocaleDateString(undefined, { weekday: 'long' }) + '</span></h2>';
+    if (d.all.length) html += '<div class="chips">' + d.all.map(chip).join('') + '</div>';
+    html += '<ul class="today-list fit">';
+    if (!d.timed.length) html += '<li class="empty">' + (d.all.length ? 'Nothing else scheduled.' : 'Nothing scheduled today ✨') + '</li>';
+    d.timed.forEach(function (ev) {
+      var cls = '', badge = '';
+      if (ev.end <= t && ev.end > ev.start) cls = 'past';
+      else if (ev.start <= t && t < ev.end) { cls = 'now'; badge = '<span class="badge now">NOW</span>'; }
+      else if (!nextFound && ev.start > t) {
+        nextFound = true;
+        var mins = Math.round((ev.start - t) / 60000);
+        if (mins <= 120) badge = '<span class="badge soon">IN ' + (mins < 60 ? mins + ' MIN' : Math.floor(mins / 60) + 'H' + (mins % 60 ? ' ' + (mins % 60) + 'M' : '')) + '</span>';
+      }
+      var startTxt = ev.start < d.s ? 'Until' : fmtTime(ev.start);
+      var endTxt = ev.end > d.e ? 'onward' : (ev.start < d.s ? fmtTime(ev.end) : (ev.end > ev.start ? '– ' + fmtTime(ev.end) : ''));
+      var sub = [ev.location, (ev.cals || []).join(' & ')].filter(Boolean).join(' · ');
+      html += '<li class="ev ' + cls + '"><div class="ev-time">' + startTxt + '<span>' + endTxt + '</span></div>' +
+        '<div class="ev-bar" style="background:' + colorsBg(ev.colors) + '"></div>' +
+        '<div><div class="ev-title">' + esc(ev.title) + badge + '</div>' + (sub ? '<div class="ev-sub">' + esc(sub) + '</div>' : '') + '</div></li>';
+    });
+    html += '</ul>';
+    var meal = data.meals && data.meals[ymd(now)];
+    if (meal) html += '<div class="tonight"><span class="e">🍽️</span><div><small>Dinner tonight</small>' + esc(meal) + '</div></div>';
+    $('today').innerHTML = html;
+  }
+
+  function renderWeek(now) {
+    var n = Math.max(1, Math.min(7, (S().days || 7) - 1)), html = '';
+    var cols = 2, rows = Math.ceil(n / cols);
+    html += '<h2><span>Coming up</span><span class="r">Next ' + n + ' day' + (n > 1 ? 's' : '') + '</span></h2><div class="days" style="grid-template-columns:repeat(' + cols + ',minmax(0,1fr));grid-template-rows:repeat(' + rows + ',minmax(0,1fr))">';
+    for (var i = 1; i <= n; i++) {
+      var day = addDays(sod(now), i), k = ymd(day), d = eventsOn(day), dow = day.getDay();
+      var name = day.toLocaleDateString(undefined, { weekday: 'short' });
+      var items = d.all.map(function (ev) { return '<li>' + chip(ev) + '</li>'; }).concat(d.timed.map(function (ev) {
+        var tm = ev.start < d.s ? 'cont.' : fmtTime(ev.start);
+        return '<li>' + dots(ev.colors) + '<span class="t">' + tm + '</span>' + esc(ev.title) + '</li>';
+      }));
+      if (!items.length) items.push('<li class="free">Nothing planned</li>');
+      var w = dailyFor(k), wHtml = '';
+      if (w) { var x = wx(w.code, 1); wHtml = '<div class="w">' + x.icon + ' ' + Math.round(w.hi) + '° <i>' + Math.round(w.lo) + '°</i></div>'; }
+      var meal = data.meals && data.meals[k];
+      html += '<div class="day' + (dow === 0 || dow === 6 ? ' weekend' : '') + '">' +
+        '<div class="day-head"><div><span class="day-name">' + esc(name) + '</span><span class="day-num">' + day.getDate() + '</span></div>' + wHtml + '</div>' +
+        '<ul class="day-events fit">' + items.join('') + '</ul>' +
+        '<div class="day-foot"><span class="m">' + (meal ? '🍽️ ' + esc(meal) : '') + '</span><span class="more-slot"></span></div></div>';
+    }
+    html += '</div>';
+    $('week').innerHTML = html;
+  }
+
+  function renderSide() {
+    var html = '';
+    var lists = data.lists || [];
+    lists.forEach(function (l) {
+      var open = (l.items || []).filter(function (it) { return !it.done; });
+      html += '<section class="card list' + (open.length ? '' : ' empty-list') + '" style="flex-grow:' + Math.max(1, Math.min(open.length, 12)) + '">' +
+        '<h2><span>' + (l.emoji ? esc(l.emoji) + '&nbsp; ' : '') + esc(l.name) + '</span><span class="count">' + (open.length || '') + '</span></h2><ul class="fit">' +
+        (open.length ? open.map(function (it) { return '<li><span>' + esc(it.text) + '</span></li>'; }).join('') : '<li class="more">All done 🎉</li>') +
+        '</ul></section>';
+    });
+    if (!lists.length) html += '<section class="card list" style="flex-grow:1"><h2>Lists</h2><div class="empty">Add lists from the phone page.</div></section>';
+    $('side').innerHTML = html;
+  }
+
+  function renderFooter() {
+    var seen = {}, legend = (data.calendars || []).filter(function (c) { if (seen[c.label]) return false; seen[c.label] = 1; return true; });
+    var notes = (data.notes || []).slice(0, 2);
+    $('notes').innerHTML = notes.map(function (n) { return '<span>📌 ' + esc(n.text) + '</span>'; }).join('');
+    $('legend').innerHTML = legend.map(function (c) { return '<span><i class="dot" style="background:' + c.color + '"></i>' + esc(c.label) + (c.error ? ' ⚠' : '') + '</span>'; }).join('');
+    renderStatus();
+  }
+
+  function renderStatus() {
+    var el = $('status');
+    if (DEMO) { el.className = 'status warn'; el.textContent = 'Demo mode'; return; }
+    if (err) { el.className = 'status warn'; el.textContent = '⚠ ' + err + (lastOk ? ' · showing data from ' + fmtTime(lastOk) : ''); return; }
+    el.className = 'status';
+    el.textContent = (S().name ? S().name + ' · ' : '') + 'Updated ' + fmtTime(lastOk);
+  }
+
+  function renderNight(now) {
+    var d = eventsOn(addDays(now, now.getHours() >= 12 ? 1 : 0)), first = d.timed.filter(function (ev) { return ev.start > now.getTime(); })[0];
+    $('nnext').textContent = first ? (now.getHours() >= 12 ? 'Tomorrow' : 'Today') + ' · ' + fmtTime(first.start) + ' ' + first.title : '';
+  }
+
+  function isNight(now) {
+    var a = S().nightStart, b = S().nightEnd, h = now.getHours();
+    if (a == null || b == null || a === b) return false;
+    return a < b ? (h >= a && h < b) : (h >= a || h < b);
+  }
+
+  /* Rotates the whole page for monitors mounted sideways (Google TV can't rotate its own output),
+     then picks the portrait or landscape layout and scales the text to the screen. */
+  function layout() {
+    var rot = Number(ROTATE !== null && ROTATE !== '' ? ROTATE : (data && data.settings && data.settings.rotate) || 0);
+    if ([0, 90, 180, 270].indexOf(rot) < 0) rot = 0;
+    var vw = window.innerWidth, vh = window.innerHeight, sideways = rot === 90 || rot === 270;
+    var W = sideways ? vh : vw, H = sideways ? vw : vh, st = $('stage');
+    st.style.width = W + 'px'; st.style.height = H + 'px';
+    st.style.transform = rot === 90 ? 'translateX(' + vw + 'px) rotate(90deg)'
+      : rot === 270 ? 'translateY(' + vh + 'px) rotate(-90deg)'
+      : rot === 180 ? 'translate(' + vw + 'px,' + vh + 'px) rotate(180deg)' : 'none';
+    PORTRAIT = H > W * 1.05;
+    document.body.classList.toggle('portrait', PORTRAIT);
+    document.documentElement.style.fontSize = (PORTRAIT ? Math.min(W * 0.0185, H * 0.0108) : Math.min(W * 0.0108, H * 0.0192)) + 'px';
+  }
+
+  function render() {
+    var now = new Date();
+    layout();
+    renderClock(now);
+    if (!data) return;
+    document.body.classList.toggle('night', isNight(now));
+    renderWeather(); renderCountdowns(now); renderToday(now); renderWeek(now); renderSide(); renderFooter(); renderNight(now);
+    requestAnimationFrame(function () {
+      // Lock each list's height first, so trimming one can't shrink its container and cascade.
+      var uls = document.querySelectorAll('.fit');
+      var hs = Array.prototype.map.call(uls, function (u) { return u.offsetHeight; });
+      Array.prototype.forEach.call(uls, function (u, i) { u.style.flex = 'none'; u.style.height = hs[i] + 'px'; });
+      Array.prototype.forEach.call(document.querySelectorAll('.fit'), fit);
+    });
+  }
+
+  /* ---------------- data loading ---------------- */
+  function schedule(ms) { clearTimeout(timer); timer = setTimeout(load, ms); }
+
+  function load() {
+    var p;
+    if (DEMO) p = Promise.resolve(window.makeDemoData());
+    else {
+      var ctrl = window.AbortController ? new AbortController() : null;
+      var to = setTimeout(function () { if (ctrl) ctrl.abort(); }, 45000);
+      p = fetch(API + (API.indexOf('?') >= 0 ? '&' : '?') + 'action=hub&k=' + encodeURIComponent(KEY), { signal: ctrl ? ctrl.signal : undefined })
+        .then(function (r) { clearTimeout(to); return r.json(); });
+    }
+    p.then(function (d) {
+      if (!d || !d.ok) throw new Error((d && d.error) || 'Unexpected response');
+      data = d; lastOk = Date.now(); err = '';
+      render(); schedule(REFRESH);
+    }).catch(function (e) {
+      err = e && e.name === 'AbortError' ? 'Server took too long' : (e && e.message) || 'Can’t reach server';
+      if (/Failed to fetch|NetworkError|Load failed/i.test(err)) err = 'Can’t reach server';
+      if (data) renderStatus(); else { $('today').innerHTML = '<h2>Home Hub</h2><div class="empty">⚠ ' + esc(err) + '</div>'; }
+      schedule(60000);
+    });
+  }
+
+  setInterval(function () {
+    var now = new Date();
+    if (now.getMinutes() !== lastMinute) { lastMinute = now.getMinutes(); render(); }
+  }, 1000);
+  window.addEventListener('resize', render);
+  render();
+  load();
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(render);
+})();
+</script>
+</body>
+</html>

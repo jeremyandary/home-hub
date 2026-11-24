@@ -1,0 +1,428 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Home Hub">
+<meta name="theme-color" content="#f6f4ef" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#14161a" media="(prefers-color-scheme: dark)">
+<title>Home Hub</title>
+<script src="config.js"></script>
+<script src="demo.js"></script>
+<style>
+  :root {
+    --bg: #f6f4ef; --card: #ffffff; --line: #e9e5dc; --text: #1f2125; --muted: #737985; --faint: #a7acb5;
+    --accent: #d9901a; --accent-bg: #fdf1dc; --danger: #d4483b; --shadow: 0 1px 2px rgba(0,0,0,.05), 0 4px 14px rgba(0,0,0,.04);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg: #14161a; --card: #1e2127; --line: #2b2f37; --text: #f2efe8; --muted: #9aa1ab; --faint: #5f6570;
+      --accent: #f5b54a; --accent-bg: #2e2818; --shadow: none; }
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+  body { background: var(--bg); color: var(--text); font: 16px/1.4 system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif; min-height: 100vh; padding-bottom: calc(5.5rem + env(safe-area-inset-bottom)); }
+  button, input, textarea { font: inherit; color: inherit; }
+  button { cursor: pointer; border: 0; background: none; }
+  .wrap { max-width: 560px; margin: 0 auto; padding: calc(1rem + env(safe-area-inset-top)) 1rem 1rem; }
+  h1 { font-size: 1.65rem; letter-spacing: -.02em; margin: .4rem 0 1rem; display: flex; justify-content: space-between; align-items: center; }
+  h1 small { font-size: .8rem; font-weight: 500; color: var(--muted); letter-spacing: 0; }
+  .card { background: var(--card); border-radius: 16px; box-shadow: var(--shadow); padding: .4rem 1rem; margin-bottom: 1rem; }
+  .muted { color: var(--muted); }
+
+  /* tab bar */
+  nav { position: fixed; left: 0; right: 0; bottom: 0; background: var(--card); border-top: 1px solid var(--line); display: flex; justify-content: center; padding-bottom: env(safe-area-inset-bottom); z-index: 5; }
+  nav button { flex: 1; max-width: 140px; padding: .6rem 0 .55rem; display: flex; flex-direction: column; align-items: center; gap: .1rem; font-size: .75rem; color: var(--muted); font-weight: 500; }
+  nav button span { font-size: 1.35rem; line-height: 1.2; filter: grayscale(1); opacity: .6; }
+  nav button.on { color: var(--text); }
+  nav button.on span { filter: none; opacity: 1; }
+
+  /* list chips */
+  .chips { display: flex; gap: .5rem; overflow-x: auto; padding-bottom: .2rem; margin-bottom: .9rem; scrollbar-width: none; }
+  .chips::-webkit-scrollbar { display: none; }
+  .chips button { flex: none; background: var(--card); box-shadow: var(--shadow); border: 1px solid var(--line); border-radius: 999px; padding: .5rem .95rem; font-weight: 500; white-space: nowrap; }
+  .chips button.on { background: var(--text); color: var(--bg); border-color: var(--text); }
+  .chips button i { font-style: normal; opacity: .55; margin-left: .3rem; font-size: .85em; }
+
+  /* forms */
+  form.add { display: flex; gap: .5rem; margin-bottom: 1rem; }
+  input[type=text], input[type=date], textarea { width: 100%; background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: .75rem .9rem; outline: none; box-shadow: var(--shadow); -webkit-appearance: none; appearance: none; }
+  input:focus, textarea:focus { border-color: var(--accent); }
+  textarea { resize: vertical; min-height: 4.5rem; }
+  .btn { background: var(--accent); color: #1b1305; font-weight: 600; border-radius: 12px; padding: .75rem 1.1rem; white-space: nowrap; }
+  .btn:disabled { opacity: .5; }
+  .link { color: var(--muted); font-size: .9rem; padding: .5rem 0; text-decoration: underline; text-underline-offset: 3px; }
+  .link.danger { color: var(--danger); }
+  .row-actions { display: flex; justify-content: space-between; align-items: center; margin-top: -.3rem; margin-bottom: 1rem; }
+
+  /* items */
+  .item { display: flex; align-items: center; gap: .8rem; padding: .7rem 0; border-top: 1px solid var(--line); }
+  .item:first-child { border-top: 0; }
+  .check { flex: none; width: 1.55rem; height: 1.55rem; border-radius: 8px; border: 2px solid var(--faint); display: grid; place-items: center; color: #fff; font-size: .95rem; }
+  .item.done .check { background: var(--accent); border-color: var(--accent); }
+  .item .txt { flex: 1; min-width: 0; word-wrap: break-word; }
+  .item.done .txt { color: var(--faint); text-decoration: line-through; }
+  .x { flex: none; width: 2rem; height: 2rem; border-radius: 50%; color: var(--faint); font-size: 1.25rem; line-height: 1; }
+  .x:active { background: var(--line); }
+  .empty { color: var(--muted); padding: 1rem 0; text-align: center; }
+  .section-label { font-size: .75rem; font-weight: 600; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); margin: 1.2rem 0 .5rem .2rem; }
+
+  /* meals */
+  .meal { display: flex; align-items: center; gap: .8rem; padding: .45rem 0; border-top: 1px solid var(--line); }
+  .meal:first-child { border-top: 0; }
+  .meal .d { flex: none; width: 3.6rem; }
+  .meal .d b { display: block; font-size: 1.15rem; line-height: 1.1; }
+  .meal .d small { color: var(--muted); font-size: .75rem; text-transform: uppercase; letter-spacing: .06em; font-weight: 600; }
+  .meal.today .d small { color: var(--accent); }
+  .meal input { box-shadow: none; border-color: transparent; background: transparent; padding: .55rem .6rem; }
+  .meal input:focus { background: var(--bg); }
+  .saved { flex: none; font-size: .8rem; color: var(--accent); width: 1.2rem; }
+
+  /* countdowns + notes */
+  .cd-form { display: grid; grid-template-columns: 3.6rem 1fr; gap: .5rem; margin-bottom: .5rem; }
+  .cd-form input:first-child { text-align: center; }
+  .cd-form .full { grid-column: 1 / -1; }
+  .entry { display: flex; align-items: center; gap: .8rem; padding: .75rem 0; border-top: 1px solid var(--line); }
+  .entry:first-child { border-top: 0; }
+  .entry .e { font-size: 1.5rem; width: 2rem; text-align: center; }
+  .entry .body { flex: 1; min-width: 0; }
+  .entry .body small { display: block; color: var(--muted); font-size: .82rem; }
+  .entry .days { color: var(--accent); font-weight: 600; white-space: nowrap; }
+
+  /* calendars */
+  .entry.cal .body input { border-color: transparent; background: transparent; box-shadow: none; padding: .1rem .3rem; margin-left: -.3rem; border-radius: 8px; font-weight: 500; }
+  .entry.cal .body input:focus { background: var(--bg); }
+  .entry.cal .body small button { color: var(--danger); text-decoration: underline; text-underline-offset: 2px; padding: .35rem .2rem; margin: -.35rem 0; }
+  .entry.cal.off .body, .entry.cal.off input[type=color] { opacity: .5; }
+  input[type=color] { flex: none; width: 2rem; height: 2rem; border: 0; padding: 0; border-radius: 50%; overflow: hidden; background: none; cursor: pointer; -webkit-appearance: none; appearance: none; }
+  input[type=color]::-webkit-color-swatch-wrapper { padding: 0; }
+  input[type=color]::-webkit-color-swatch { border: 0; border-radius: 50%; }
+  .switch { flex: none; width: 3.1rem; height: 1.9rem; border-radius: 999px; background: var(--faint); position: relative; transition: background .15s; }
+  .switch i { position: absolute; top: .2rem; left: .2rem; width: 1.5rem; height: 1.5rem; border-radius: 50%; background: #fff; transition: transform .15s; }
+  .switch.on { background: #43b673; }
+  .switch.on i { transform: translateX(1.2rem); }
+  .steps ol { padding: .5rem 0 .5rem 1.2rem; }
+  .steps li { padding: .2rem 0 .2rem .2rem; }
+  .cal-add { display: flex; align-items: center; gap: .7rem; margin: .5rem 0; }
+  .hint { color: var(--muted); font-size: .85rem; margin: -.2rem .2rem .6rem; }
+  form + .hint { margin-top: .8rem; }
+  .form-err { color: var(--danger); font-size: .9rem; margin: 0 .2rem .6rem; }
+  nav button { min-width: 0; }
+
+  .toast { position: fixed; left: 50%; bottom: calc(5.5rem + env(safe-area-inset-bottom)); transform: translateX(-50%); background: var(--text); color: var(--bg); padding: .6rem 1rem; border-radius: 10px; font-size: .9rem; opacity: 0; transition: opacity .2s; pointer-events: none; max-width: 90vw; z-index: 9; }
+  .toast.show { opacity: 1; }
+  .banner { background: var(--accent-bg); color: var(--text); border-radius: 12px; padding: .7rem .9rem; font-size: .88rem; margin-bottom: 1rem; }
+  .sync { width: .55rem; height: .55rem; border-radius: 50%; background: #5cc98a; display: inline-block; margin-right: .35rem; }
+  .sync.busy { background: var(--accent); }
+  .sync.err { background: var(--danger); }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1><span id="title">Home Hub</span><small><i class="sync" id="sync"></i><span id="synctext"></span></small></h1>
+  <div id="banner"></div>
+  <div id="view"></div>
+</div>
+<nav id="nav"></nav>
+<div class="toast" id="toast"></div>
+
+<script>
+(function () {
+  'use strict';
+  var CFG = window.HUB_CONFIG || {};
+  var store = {
+    get: function (k) { try { return localStorage.getItem(k); } catch (e) { return null; } },
+    set: function (k, v) { try { localStorage.setItem(k, v); } catch (e) {} }
+  };
+  var hash = new URLSearchParams(location.hash.replace(/^#/, ''));
+  if (hash.get('k')) store.set('hub.key', hash.get('k'));
+  if (hash.get('api')) store.set('hub.api', hash.get('api'));
+  var API = store.get('hub.api') || CFG.API_URL || '';
+  var KEY = store.get('hub.key') || '';
+  var DEMO = !API || hash.has('demo');
+
+  var TABS = [['lists', '📝', 'Lists'], ['meals', '🍽️', 'Dinners'], ['countdowns', '⏳', 'Countdowns'], ['notes', '📌', 'Notes'], ['calendars', '📅', 'Calendars']];
+  var state = { lists: [], meals: {}, countdowns: [], notes: [], calendarList: [] };
+  var COLORS = ['#e8789f', '#5b9cf5', '#5cc98a', '#f5b54a', '#a38cf0', '#ef7f5a', '#4fc3c7'];
+  var calDraft = { url: '', label: '', color: '' }, calError = '', calBusy = false;
+  var tab = store.get('edit.tab') || 'lists';
+  var activeList = store.get('edit.list') || '';
+  var pending = 0, loaded = false;
+
+  var $ = function (id) { return document.getElementById(id); };
+  function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
+  function uid() { return 'i' + Date.now().toString(36) + Math.random().toString(36).slice(2, 8); }
+  function ymd(d) { return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); }
+  function parseYmd(s) { var p = s.split('-').map(Number); return new Date(p[0], p[1] - 1, p[2]); }
+  function today() { var d = new Date(); d.setHours(0, 0, 0, 0); return d; }
+  function toast(msg) { var t = $('toast'); t.textContent = msg; t.classList.add('show'); clearTimeout(toast.t); toast.t = setTimeout(function () { t.classList.remove('show'); }, 2600); }
+  function setSync(kind, text) { $('sync').className = 'sync ' + (kind || ''); $('synctext').textContent = text || ''; }
+  function findList(name) { return state.lists.filter(function (l) { return l.name === name; })[0]; }
+
+  /* ---------- local copy of each change (applied instantly, then confirmed by the server) ---------- */
+  function apply(a, p) {
+    var l;
+    switch (a) {
+      case 'addItem': l = findList(p.list); if (l) l.items.push({ id: p.id, text: p.text, done: false }); break;
+      case 'toggleItem': state.lists.forEach(function (l) { l.items.forEach(function (it) { if (it.id === p.id) it.done = p.done; }); }); break;
+      case 'deleteItem': state.lists.forEach(function (l) { l.items = l.items.filter(function (it) { return it.id !== p.id; }); }); break;
+      case 'clearDone': l = findList(p.list); if (l) l.items = l.items.filter(function (it) { return !it.done; }); break;
+      case 'addList': if (!findList(p.name)) state.lists.push({ name: p.name, emoji: p.emoji || '', items: [] }); break;
+      case 'deleteList': state.lists = state.lists.filter(function (l) { return l.name !== p.name; }); break;
+      case 'setMeal': if (p.meal) state.meals[p.date] = p.meal; else delete state.meals[p.date]; break;
+      case 'addCountdown': state.countdowns.push({ id: p.id, name: p.name, date: p.date, emoji: p.emoji }); state.countdowns.sort(function (a, b) { return a.date < b.date ? -1 : 1; }); break;
+      case 'deleteCountdown': state.countdowns = state.countdowns.filter(function (c) { return c.id !== p.id; }); break;
+      case 'addNote': state.notes.unshift({ id: p.id, text: p.text, added: Date.now() }); break;
+      case 'setCalendar': state.calendarList.forEach(function (c) { if (c.id === p.id) ['show', 'color', 'label'].forEach(function (k) { if (p[k] !== undefined) c[k] = p[k]; }); }); break;
+      case 'deleteCalendar': state.calendarList = state.calendarList.filter(function (c) { return c.id !== p.id; }); break;
+      case 'deleteNote': state.notes = state.notes.filter(function (n) { return n.id !== p.id; }); break;
+    }
+  }
+
+  function send(action, payload, opts) {
+    apply(action, payload);
+    if (!(opts && opts.noRender)) render();
+    if (DEMO) return Promise.resolve();
+    pending++; setSync('busy', 'Saving…');
+    return fetch(API, { method: 'POST', body: JSON.stringify(Object.assign({ k: KEY, action: action }, payload)) })
+      .then(function (r) { return r.json(); })
+      .then(function (d) {
+        if (!d.ok) throw new Error(d.error);
+        pending--;
+        if (!pending) { take(d); setSync('', 'Saved'); if (!(opts && opts.noRender)) render(); }
+      })
+      .catch(function (e) {
+        pending--;
+        setSync('err', 'Not saved');
+        toast('Couldn’t save: ' + (e.message || 'no connection') + '. Refreshing…');
+        load();
+      });
+  }
+
+  function take(d) { state = { lists: d.lists || [], meals: d.meals || {}, countdowns: d.countdowns || [], notes: d.notes || [], calendarList: d.calendarList || [], sheetUrl: d.sheetUrl }; }
+
+  function load() {
+    if (DEMO) { take(window.makeDemoData()); loaded = true; setSync('', 'Demo'); render(); return; }
+    if (!KEY) { $('banner').innerHTML = '<div class="banner">This page needs your family link (the one ending in <b>#k=…</b>). Ask whoever set up the Home Hub to send it to you.</div>'; }
+    setSync('busy', 'Loading…');
+    fetch(API + (API.indexOf('?') >= 0 ? '&' : '?') + 'action=edit&k=' + encodeURIComponent(KEY))
+      .then(function (r) { return r.json(); })
+      .then(function (d) {
+        if (!d.ok) throw new Error(d.error);
+        if (pending) return;
+        take(d); loaded = true; setSync('', 'Up to date'); render();
+      })
+      .catch(function (e) { setSync('err', 'Offline'); toast(e.message || 'Can’t reach the Home Hub'); });
+  }
+
+  /* ---------- views ---------- */
+  function render() {
+    $('nav').innerHTML = TABS.map(function (t) { return '<button data-tab="' + t[0] + '" class="' + (tab === t[0] ? 'on' : '') + '"><span>' + t[1] + '</span>' + t[2] + '</button>'; }).join('');
+    if (DEMO) $('banner').innerHTML = '<div class="banner">Demo mode: changes here aren’t saved. Add your API URL to config.js to connect.</div>';
+    if (!loaded) { $('view').innerHTML = '<div class="empty">Loading…</div>'; return; }
+    $('view').innerHTML = ({ lists: viewLists, meals: viewMeals, countdowns: viewCountdowns, notes: viewNotes, calendars: viewCalendars })[tab]();
+  }
+
+  function viewLists() {
+    if (!findList(activeList)) activeList = state.lists[0] ? state.lists[0].name : '';
+    var l = findList(activeList);
+    var html = '<div class="chips">' + state.lists.map(function (x) {
+      var open = x.items.filter(function (i) { return !i.done; }).length;
+      return '<button data-list="' + esc(x.name) + '" class="' + (x.name === activeList ? 'on' : '') + '">' + (x.emoji ? esc(x.emoji) + ' ' : '') + esc(x.name) + (open ? '<i>' + open + '</i>' : '') + '</button>';
+    }).join('') + '<button data-act="newList">＋ New list</button></div>';
+    if (!l) return html + '<div class="empty">Make your first list with “＋ New list”.</div>';
+    html += '<form class="add" data-form="item"><input type="text" name="text" placeholder="Add to ' + esc(l.name) + '…" autocomplete="off" enterkeyhint="done"><button class="btn">Add</button></form>';
+    var open = l.items.filter(function (i) { return !i.done; }), done = l.items.filter(function (i) { return i.done; });
+    html += '<div class="card">' + (l.items.length ? open.concat(done).map(function (it) {
+      return '<div class="item' + (it.done ? ' done' : '') + '"><button class="check" data-toggle="' + esc(it.id) + '" aria-label="Check off">' + (it.done ? '✓' : '') + '</button><div class="txt">' + esc(it.text) + '</div><button class="x" data-del-item="' + esc(it.id) + '" aria-label="Delete">×</button></div>';
+    }).join('') : '<div class="empty">Nothing here yet.</div>') + '</div>';
+    html += '<div class="row-actions">' + (done.length ? '<button class="link" data-act="clearDone">Clear ' + done.length + ' checked</button>' : '<span></span>') +
+      '<button class="link danger" data-act="deleteList">Delete list</button></div>';
+    return html;
+  }
+
+  function viewMeals() {
+    var html = '<div class="section-label">Dinner plan · next 2 weeks</div><div class="card">';
+    var t = today();
+    for (var i = 0; i < 14; i++) {
+      var d = new Date(t); d.setDate(d.getDate() + i);
+      var k = ymd(d);
+      html += '<div class="meal' + (i === 0 ? ' today' : '') + '"><div class="d"><small>' + (i === 0 ? 'Today' : d.toLocaleDateString(undefined, { weekday: 'short' })) + '</small><b>' + d.getDate() + '</b></div>' +
+        '<input type="text" data-meal="' + k + '" value="' + esc(state.meals[k] || '') + '" placeholder="What’s for dinner?" enterkeyhint="done"><span class="saved" id="s-' + k + '"></span></div>';
+    }
+    return html + '</div>';
+  }
+
+  function viewCountdowns() {
+    var t = today();
+    var html = '<div class="section-label">Add a countdown</div><form data-form="countdown"><div class="cd-form">' +
+      '<input type="text" name="emoji" placeholder="🎉" maxlength="4"><input type="text" name="name" placeholder="Event (e.g. Disney trip)" required>' +
+      '<input class="full" type="date" name="date" min="' + ymd(t) + '" required></div><button class="btn" style="width:100%">Add countdown</button></form>';
+    html += '<div class="section-label">Showing on the hub</div><div class="card">' + (state.countdowns.length ? state.countdowns.map(function (c) {
+      var n = Math.round((parseYmd(c.date) - t) / 86400000);
+      return '<div class="entry"><div class="e">' + esc(c.emoji || '📅') + '</div><div class="body">' + esc(c.name) + '<small>' + parseYmd(c.date).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' }) + '</small></div>' +
+        '<div class="days">' + (n <= 0 ? 'Today' : n === 1 ? '1 day' : n + ' days') + '</div><button class="x" data-del-cd="' + esc(c.id) + '">×</button></div>';
+    }).join('') : '<div class="empty">No countdowns yet.</div>') + '</div>';
+    return html;
+  }
+
+  function viewNotes() {
+    var html = '<div class="section-label">Post a note to the hub</div><form data-form="note"><textarea name="text" maxlength="300" placeholder="e.g. Grandma lands at 4:15 — who’s picking her up?"></textarea>' +
+      '<button class="btn" style="width:100%;margin-top:.5rem">Post note</button></form>';
+    html += '<div class="section-label">Notes (newest 2 show on the hub)</div><div class="card">' + (state.notes.length ? state.notes.map(function (n) {
+      return '<div class="entry"><div class="body">' + esc(n.text) + (n.added ? '<small>' + new Date(n.added).toLocaleString(undefined, { weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }) + '</small>' : '') + '</div><button class="x" data-del-note="' + esc(n.id) + '">×</button></div>';
+    }).join('') : '<div class="empty">No notes.</div>') + '</div>';
+    if (state.sheetUrl && state.sheetUrl !== '#') html += '<p class="muted" style="font-size:.85rem;text-align:center;margin-top:1.5rem">Hub settings (city, night mode, screen rotation) live in the <a href="' + esc(state.sheetUrl) + '" target="_blank" rel="noopener" style="color:inherit">Home Hub spreadsheet</a>.</p>';
+    return html;
+  }
+
+  function freeColor() {
+    var used = state.calendarList.map(function (c) { return c.color.toLowerCase(); });
+    return COLORS.filter(function (c) { return used.indexOf(c) < 0; })[0] || COLORS[0];
+  }
+
+  function viewCalendars() {
+    var cals = state.calendarList.slice().sort(function (a, b) { return (b.show ? 1 : 0) - (a.show ? 1 : 0); });
+    var html = '<div class="section-label">Calendars on the hub</div><div class="card">' + (cals.length ? cals.map(function (c) {
+      return '<div class="entry cal' + (c.show ? '' : ' off') + '"><input type="color" data-cal-color="' + esc(c.id) + '" value="' + esc(c.color) + '" aria-label="Color for ' + esc(c.label) + '">' +
+        '<div class="body"><input type="text" data-cal-label="' + esc(c.id) + '" value="' + esc(c.label) + '" maxlength="40" aria-label="Name on display" enterkeyhint="done"><small>' +
+        (c.kind === 'link' ? 'Added by link' : 'Google Calendar') + (c.name && c.name !== c.label ? ' · ' + esc(c.name) : '') +
+        (c.kind === 'link' ? ' · <button data-del-cal="' + esc(c.id) + '">Remove</button>' : '') + '</small></div>' +
+        '<button class="switch' + (c.show ? ' on' : '') + '" role="switch" aria-checked="' + c.show + '" data-cal-show="' + esc(c.id) + '" aria-label="Show ' + esc(c.label) + '"><i></i></button></div>';
+    }).join('') : '<div class="empty">No calendars yet.</div>') + '</div>';
+    html += '<p class="hint">Tap a color or name to change it. Google calendars come from the account that runs the hub.</p>' +
+      '<div class="row-actions" style="margin-top:0"><button class="link" data-act="syncCalendars">Look for new Google calendars</button></div>';
+
+    html += '<div class="section-label">Add an iPhone calendar</div><div class="card steps"><ol>' +
+      '<li>On the iPhone, open <b>Calendar</b> and tap <b>Calendars</b> at the bottom.</li>' +
+      '<li>Tap the <b>ⓘ</b> next to the calendar (it has to be under <b>iCloud</b>).</li>' +
+      '<li>Turn on <b>Public Calendar</b>, tap <b>Share Link</b>, then <b>Copy</b>.</li>' +
+      '<li>Come back here and paste it below.</li></ol></div>' +
+      '<form data-form="calendar">' +
+      '<input type="text" name="url" placeholder="Paste the calendar link" value="' + esc(calDraft.url) + '" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" inputmode="url">' +
+      '<div class="cal-add"><input type="color" name="color" value="' + esc(calDraft.color || freeColor()) + '" aria-label="Color"><input type="text" name="label" placeholder="Name on the display (e.g. Mom)" maxlength="40" value="' + esc(calDraft.label) + '"></div>' +
+      (calError ? '<p class="form-err" role="alert">' + esc(calError) + '</p>' : '') +
+      '<button class="btn" style="width:100%"' + (calBusy ? ' disabled' : '') + '>' + (calBusy ? 'Checking the link…' : 'Add calendar') + '</button></form>' +
+      '<p class="hint">New events are still added in the iPhone’s own Calendar app. Anyone who has the link can view that calendar but not change it, so only paste it here.</p>';
+    return html;
+  }
+
+  // Unlike the other changes, the server has to check the link first, so this one waits for an answer.
+  function calRequest(action, payload, done) {
+    if (DEMO) {
+      if (action === 'addCalendar') state.calendarList.push({ id: uid(), name: 'Home', label: payload.label || 'Home', show: true, color: payload.color, kind: 'link' });
+      done(null); return;
+    }
+    pending++; setSync('busy', 'Saving…');
+    fetch(API, { method: 'POST', body: JSON.stringify(Object.assign({ k: KEY, action: action }, payload)) })
+      .then(function (r) { return r.json(); })
+      .then(function (d) {
+        pending--;
+        if (!d.ok) { var e = new Error(d.error); e.handled = true; throw e; }
+        if (!pending) take(d);
+        setSync('', 'Saved'); done(null);
+      })
+      .catch(function (e) {
+        if (!e.handled) pending--;
+        setSync('err', 'Not saved'); done(e.handled ? e.message : 'Couldn’t reach the Home Hub. Try again in a moment');
+      });
+  }
+
+  /* ---------- events ---------- */
+  document.addEventListener('click', function (e) {
+    var b = e.target.closest('button'); if (!b) return;
+    if (b.dataset.tab) { tab = b.dataset.tab; store.set('edit.tab', tab); render(); window.scrollTo(0, 0); return; }
+    if (b.dataset.list) { activeList = b.dataset.list; store.set('edit.list', activeList); render(); return; }
+    if (b.dataset.toggle) {
+      var it = null; state.lists.forEach(function (l) { l.items.forEach(function (x) { if (x.id === b.dataset.toggle) it = x; }); });
+      if (it) send('toggleItem', { id: it.id, done: !it.done });
+      return;
+    }
+    if (b.dataset.delItem) return send('deleteItem', { id: b.dataset.delItem });
+    if (b.dataset.delCd) return send('deleteCountdown', { id: b.dataset.delCd });
+    if (b.dataset.calShow) return send('setCalendar', { id: b.dataset.calShow, show: !b.classList.contains('on') });
+    if (b.dataset.delCal) {
+      if (confirm('Remove this calendar from the hub? The calendar itself isn’t touched.')) send('deleteCalendar', { id: b.dataset.delCal });
+      return;
+    }
+    if (b.dataset.delNote) return send('deleteNote', { id: b.dataset.delNote });
+    var act = b.dataset.act;
+    if (act === 'newList') {
+      var name = (prompt('Name for the new list (you can start with an emoji, e.g. "🎁 Gift ideas")') || '').trim();
+      if (!name) return;
+      var m = name.match(/^(\p{Extended_Pictographic}[️‍\p{Extended_Pictographic}]*)\s*(.*)$/u);
+      var emoji = m && m[2] ? m[1] : '', nm = m && m[2] ? m[2] : name;
+      if (findList(nm)) { toast('There’s already a list called ' + nm); return; }
+      activeList = nm; store.set('edit.list', nm);
+      send('addList', { name: nm, emoji: emoji });
+    } else if (act === 'clearDone') send('clearDone', { list: activeList });
+    else if (act === 'syncCalendars') {
+      var before = state.calendarList.length;
+      b.disabled = true; b.textContent = 'Looking…';
+      calRequest('syncCalendars', {}, function (err) {
+        var n = state.calendarList.length - before;
+        toast(err || (n > 0 ? 'Added ' + n + ' calendar' + (n > 1 ? 's' : '') : 'No new calendars'));
+        render();
+      });
+    }
+    else if (act === 'deleteList') {
+      if (confirm('Delete the "' + activeList + '" list and everything on it?')) send('deleteList', { name: activeList });
+    }
+  });
+
+  document.addEventListener('submit', function (e) {
+    var f = e.target; e.preventDefault();
+    if (f.dataset.form === 'item') {
+      var t = f.text.value.trim(); if (!t) return;
+      send('addItem', { id: uid(), list: activeList, text: t });
+      var input = document.querySelector('[data-form=item] input'); if (input) { input.value = ''; input.focus(); }
+    } else if (f.dataset.form === 'countdown') {
+      if (!f.name.value.trim() || !f.date.value) return;
+      send('addCountdown', { id: uid(), emoji: f.emoji.value.trim(), name: f.name.value.trim(), date: f.date.value });
+    } else if (f.dataset.form === 'calendar') {
+      if (calBusy) return;
+      calDraft = { url: f.url.value.trim(), label: f.label.value.trim(), color: f.color.value };
+      if (!calDraft.url) { calError = 'Paste the calendar link first'; render(); return; }
+      calBusy = true; calError = ''; render();
+      calRequest('addCalendar', calDraft, function (err) {
+        calBusy = false; calError = err || '';
+        if (!err) { calDraft = { url: '', label: '', color: '' }; toast('Calendar added. It will be on the TV within a few minutes'); window.scrollTo(0, 0); }
+        render();
+      });
+    } else if (f.dataset.form === 'note') {
+      var n = f.text.value.trim(); if (!n) return;
+      send('addNote', { id: uid(), text: n });
+    }
+  });
+
+  document.addEventListener('change', function (e) {
+    var el = e.target;
+    if (el.dataset && el.dataset.calColor) return send('setCalendar', { id: el.dataset.calColor, color: el.value }, { noRender: true });
+    if (el.dataset && el.dataset.calLabel) {
+      if (!el.value.trim()) { render(); return; }
+      return send('setCalendar', { id: el.dataset.calLabel, label: el.value.trim() }, { noRender: true });
+    }
+    if (el.dataset && el.dataset.meal) {
+      var date = el.dataset.meal, meal = el.value.trim();
+      if ((state.meals[date] || '') === meal) return;
+      send('setMeal', { date: date, meal: meal }, { noRender: true }).then(function () { var s = $('s-' + date); if (s) s.textContent = '✓'; });
+    }
+  });
+  // Keep a half-filled calendar form through background refreshes.
+  document.addEventListener('input', function (e) {
+    var f = e.target.form;
+    if (f && f.dataset.form === 'calendar') calDraft[e.target.name] = e.target.value;
+  });
+  document.addEventListener('keydown', function (e) {
+    if (e.key === 'Enter' && e.target.dataset && (e.target.dataset.meal || e.target.dataset.calLabel)) e.target.blur();
+  });
+
+  // Refresh when the app comes back to the foreground, so the lists are never stale.
+  document.addEventListener('visibilitychange', function () { if (!document.hidden && !pending) load(); });
+
+  render();
+  load();
+})();
+</script>
+</body>
+</html>
